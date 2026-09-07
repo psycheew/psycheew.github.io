@@ -114,12 +114,12 @@
 
   {% include js-selector.html lang=lang %}
 
-  <!-- Google Analytics is enabled whenever a Measurement ID is configured. -->
-  {% if site.analytics.google.id and site.analytics.google.id != empty %}
-    {% include analytics/google.html %}
-  {% endif %}
-
   {% if jekyll.environment == 'production' %}
+    <!-- Google Analytics -->
+    {% if site.analytics.google.id and site.analytics.google.id != empty %}
+      {% include analytics/google.html %}
+    {% endif %}
+
     <!-- PWA -->
     {% if site.pwa.enabled %}
       <script
