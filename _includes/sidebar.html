@@ -51,7 +51,7 @@
       </div>
       <div class="sidebar-counter-item">
         <dt>TOTAL</dt>
-        <dd>{{ site.data.ga4_counts.total | default: '—' | escape }}</dd>
+        <dd data-analytics-total data-analytics-url="{{ '/assets/data/analytics.json' | relative_url }}">{{ site.data.ga4_counts.total | default: '—' | escape }}</dd>
       </div>
     </dl>
     {% for entry in site.data.contact %}

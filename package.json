@@ -47,6 +47,7 @@
     "conventional-changelog-conventionalcommits": "^9.1.0",
     "eslint": "^9.38.0",
     "globals": "^16.4.0",
+    "google-auth-library": "^11.0.2",
     "gray-matter": "^4.0.3",
     "husky": "^9.1.7",
     "notion-to-md": "^3.1.9",
