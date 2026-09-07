@@ -114,6 +114,11 @@
 
   {% include js-selector.html lang=lang %}
 
+  <!-- Google Analytics is enabled whenever a Measurement ID is configured. -->
+  {% if site.analytics.google.id and site.analytics.google.id != empty %}
+    {% include analytics/google.html %}
+  {% endif %}
+
   {% if jekyll.environment == 'production' %}
     <!-- PWA -->
     {% if site.pwa.enabled %}
@@ -127,7 +132,7 @@
     {% for analytics in site.analytics %}
       {% capture str %}{{ analytics }}{% endcapture %}
       {% assign platform = str | split: '{' | first %}
-      {% if site.analytics[platform].id and site.analytics[platform].id != empty %}
+      {% if platform != 'google' and site.analytics[platform].id and site.analytics[platform].id != empty %}
         {% include analytics/{{ platform }}.html %}
       {% endif %}
     {% endfor %}
