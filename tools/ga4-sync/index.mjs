@@ -5,6 +5,12 @@ import { JWT } from 'google-auth-library';
 
 const outputPath = 'assets/data/analytics.json';
 
+export function seoulDate(now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(now);
+}
+
 export function parseTotalUsers(report) {
   if (report.metricHeaders?.[0]?.name !== 'totalUsers') {
     throw new Error('Unexpected metric');
@@ -22,8 +28,8 @@ export function parseTotalUsers(report) {
   return count;
 }
 
-export async function saveCount(totalUsers, path = outputPath, now = new Date()) {
-  if (!Number.isSafeInteger(totalUsers) || totalUsers < 0) {
+export async function saveCount(totalUsers, todayUsers, path = outputPath, now = new Date()) {
+  if (![totalUsers, todayUsers].every((value) => Number.isSafeInteger(value) && value >= 0)) {
     throw new Error('Invalid count');
   }
   let previous;
@@ -33,15 +39,15 @@ export async function saveCount(totalUsers, path = outputPath, now = new Date())
     if (error.code !== 'ENOENT') throw error;
   }
   // Preserve updatedAt too when the metric is unchanged, avoiding hourly commits.
-  if (previous?.totalUsers === totalUsers) return false;
-  const data = { totalUsers, updatedAt: now.toISOString() };
+  if (previous?.totalUsers === totalUsers && previous?.todayUsers === todayUsers) return false;
+  const data = { totalUsers, todayUsers, updatedAt: now.toISOString() };
   await mkdir(dirname(path), { recursive: true });
   await writeFile(`${path}.tmp`, `${JSON.stringify(data, null, 2)}\n`);
   await rename(`${path}.tmp`, path);
   return true;
 }
 
-export async function sync({ env = process.env, query, path = outputPath } = {}) {
+export async function sync({ env = process.env, query, path = outputPath, now = new Date() } = {}) {
   try {
     if (env.GITHUB_ACTIONS !== 'true') throw new Error('Actions only');
     const propertyId = env.GA4_PROPERTY_ID;
@@ -51,12 +57,13 @@ export async function sync({ env = process.env, query, path = outputPath } = {})
         !credentials.client_email || !credentials.private_key) {
       throw new Error('Invalid credentials');
     }
+    const today = seoulDate(now);
     const request = {
       method: 'POST',
       url: `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
       data: {
         // Covers the property's entire GA4 history; do not sum daily users.
-        dateRanges: [{ startDate: '2015-08-14', endDate: 'today' }],
+        dateRanges: [{ startDate: '2015-08-14', endDate: today }],
         metrics: [{ name: 'totalUsers' }]
       },
       timeout: 30000
@@ -66,8 +73,19 @@ export async function sync({ env = process.env, query, path = outputPath } = {})
       key: credentials.private_key,
       scopes: ['https://www.googleapis.com/auth/analytics.readonly']
     });
-    const response = query ? await query(request) : await client.request(request);
-    const changed = await saveCount(parseTotalUsers(response.data), path);
+    const send = query ?? ((options) => client.request(options));
+    const [total, daily] = await Promise.all([
+      send(request),
+      send({ ...request, data: { ...request.data,
+        dateRanges: [{ startDate: today, endDate: today }] } })
+    ]);
+    // GA4 date ranges use the property's reporting time zone, not the runner's.
+    // Fail closed rather than publish another time zone's daily users as KST.
+    if ([total, daily].some(({ data }) => data.metadata?.timeZone !== 'Asia/Seoul')) {
+      console.log('::warning::Set the GA4 property reporting time zone to Asia/Seoul.');
+      throw new Error('Unexpected reporting time zone');
+    }
+    const changed = await saveCount(parseTotalUsers(total.data), parseTotalUsers(daily.data), path, now);
     console.log(changed ? 'GA4 public count updated.' : 'GA4 public count unchanged.');
     return true;
   } catch {
