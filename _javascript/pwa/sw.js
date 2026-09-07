@@ -62,6 +62,11 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Public analytics must bypass the cache-first PWA strategy.
+  if (new URL(event.request.url).pathname.endsWith('/assets/data/analytics.json')) {
+    return;
+  }
+
   if (event.request.headers.has('range')) {
     return;
   }
