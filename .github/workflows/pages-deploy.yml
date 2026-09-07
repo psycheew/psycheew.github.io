@@ -28,7 +28,20 @@ jobs:
           ruby-version: "3.2"
           bundler-cache: true
 
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22.19.0"
+          cache: npm
+
+      - name: Build assets
+        run: |
+          npm ci
+          npm run build
+
       - name: Build site
+        env:
+          JEKYLL_ENV: production
         run: bundle exec jekyll build
 
       - name: Upload artifact

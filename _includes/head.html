@@ -115,6 +115,11 @@
   {% include js-selector.html lang=lang %}
 
   {% if jekyll.environment == 'production' %}
+    <!-- Google Analytics -->
+    {% if site.analytics.google.id and site.analytics.google.id != empty %}
+      {% include analytics/google.html %}
+    {% endif %}
+
     <!-- PWA -->
     {% if site.pwa.enabled %}
       <script
@@ -127,7 +132,7 @@
     {% for analytics in site.analytics %}
       {% capture str %}{{ analytics }}{% endcapture %}
       {% assign platform = str | split: '{' | first %}
-      {% if site.analytics[platform].id and site.analytics[platform].id != empty %}
+      {% if platform != 'google' and site.analytics[platform].id and site.analytics[platform].id != empty %}
         {% include analytics/{{ platform }}.html %}
       {% endif %}
     {% endfor %}
