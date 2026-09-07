@@ -1,0 +1,4 @@
+# Populate with GA4 aggregates once a reporting data source is connected.
+# Null values display as an em dash; zero is a valid count.
+today: null
+total: null
