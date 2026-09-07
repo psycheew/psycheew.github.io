@@ -47,7 +47,7 @@
     <dl class="sidebar-counter w-100" aria-label="Site statistics">
       <div class="sidebar-counter-item">
         <dt>TODAY</dt>
-        <dd>{{ site.data.ga4_counts.today | default: '—' | escape }}</dd>
+        <dd data-analytics-today>{{ site.data.ga4_counts.today | default: '—' | escape }}</dd>
       </div>
       <div class="sidebar-counter-item">
         <dt>TOTAL</dt>
