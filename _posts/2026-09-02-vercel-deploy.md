@@ -1,5 +1,5 @@
 ---
-title: Vercel로 5분 만에 GitHub 프로젝트 웹 사이트 무료 배포하기
+title: '[React, Vercel] 5분 만에 GitHub 프로젝트 웹 사이트 무료 배포'
 date: '2026-09-02 00:00:00 +0900'
 permalink: /posts/vercel-deploy/
 categories:
@@ -10,7 +10,7 @@ tags:
   - Vercel
   - 배포
 notion_id: 3cf0b704-6937-802c-94f2-ddb645333ff1
-notion_last_edited: '2026-09-06T20:26:00.000Z'
+notion_last_edited: '2026-09-12T11:54:00.000Z'
 notion_asset_dir: assets/img/posts/vercel-deploy
 notion_sync_version: 5
 ---
@@ -29,7 +29,7 @@ notion_sync_version: 5
 <br>
 
 
-## 🚀 **①** Sign Up
+## 🚀 Sign Up
 
 
 [Vercel](https://vercel.com/)에 접속하여 계정을 생성합니다.
@@ -65,7 +65,7 @@ GitHub = Google 계정이기 때문에 **Continue with Google**로 진행하였�
 <br>
 
 
-## 🔗 **③** Import Git Repository
+## 🔗 Import Git Repository
 
 
 ![](/assets/img/posts/vercel-deploy/image-3.png)
@@ -83,7 +83,7 @@ GitHub = Google 계정이기 때문에 **Continue with Google**로 진행하였�
 <br>
 
 
-## ⚙️ **④** Deploy
+## ⚙️ Deploy
 
 
 ![](/assets/img/posts/vercel-deploy/image-4.png)
@@ -98,7 +98,7 @@ GitHub = Google 계정이기 때문에 **Continue with Google**로 진행하였�
 <br>
 
 
-## 🌐 **⑤** Change Domain
+## 🌐 Change Domain
 
 
 초기 배포 시에는 자동으로 주소가 생성되지만 직접 변경할 수 있습니다.

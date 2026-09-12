@@ -1,5 +1,7 @@
 ---
-title: Radix Select에서 빈 문자열 value 처리로 인해 발생한 에러 해결
+title: >-
+  [Radix] Select.Item must have a value prop that is not an empty string — 빈 문자열
+  value 처리로 인한 에러 해결
 date: '2026-05-01 00:00:00 +0900'
 permalink: /posts/radix-select-error/
 categories:
@@ -7,8 +9,9 @@ categories:
 tags:
   - Radix UI
   - React
+  - Troubleshooting
 notion_id: 3cf0b704-6937-80e5-964a-ceeceef21816
-notion_last_edited: '2026-09-06T20:27:00.000Z'
+notion_last_edited: '2026-09-12T12:00:00.000Z'
 notion_asset_dir: assets/img/posts/radix-select-error
 notion_sync_version: 5
 ---
