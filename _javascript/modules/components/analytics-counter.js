@@ -8,9 +8,9 @@ export async function loadAnalyticsCounter() {
       signal: AbortSignal.timeout(10000)
     });
     if (!response.ok) return;
-    const { totalUsers, todayUsers } = await response.json();
+    const { totalSessions, todaySessions } = await response.json();
     const todayCounter = document.querySelector('[data-analytics-today]');
-    for (const [element, value] of [[counter, totalUsers], [todayCounter, todayUsers]]) {
+    for (const [element, value] of [[counter, totalSessions], [todayCounter, todaySessions]]) {
       if (element && Number.isSafeInteger(value) && value >= 0) {
         element.textContent = new Intl.NumberFormat().format(value);
       }
