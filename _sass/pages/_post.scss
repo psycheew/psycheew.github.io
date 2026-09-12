@@ -3,6 +3,85 @@
 @use '../abstracts/mixins' as mx;
 @use '../abstracts/placeholders';
 
+.content {
+  .notion-video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    margin: 1.5rem 0 0.5rem;
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      border-radius: 0.5rem;
+    }
+  }
+
+  .notion-bookmark-source {
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+  }
+
+  .notion-bookmark {
+    display: flex;
+    overflow: hidden;
+    margin: 1.5rem 0;
+    border: 1px solid var(--main-border-color);
+    border-radius: 0.5rem;
+    background: var(--card-bg);
+
+    > a {
+      border: 0;
+      box-shadow: none;
+    }
+
+    > a:first-child:not(.notion-bookmark-body) {
+      flex: 0 0 30%;
+      max-width: 30%;
+      margin: 0;
+    }
+
+    .notion-bookmark-image {
+      width: 100%;
+      height: 100%;
+      max-height: 14rem;
+      object-fit: cover;
+      border-radius: 0;
+      margin: 0;
+    }
+
+    .notion-bookmark-body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 0.5rem;
+      min-width: 0;
+      padding: 1rem;
+      color: var(--text-color);
+      overflow-wrap: anywhere;
+    }
+
+    .notion-bookmark-description,
+    .notion-bookmark-domain {
+      color: var(--text-muted-color);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 575px) {
+      flex-direction: column;
+
+      > a:first-child:not(.notion-bookmark-body) {
+        flex-basis: auto;
+        max-width: 100%;
+      }
+
+      .notion-bookmark-image {
+        aspect-ratio: 16 / 9;
+      }
+    }
+  }
+}
+
 %-btn-post-nav {
   width: 50%;
   position: relative;
