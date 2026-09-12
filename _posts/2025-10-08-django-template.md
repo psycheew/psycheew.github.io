@@ -1,6 +1,6 @@
 ---
 title: '[Django] {% extends %}가 동작하지 않는 이유 — {# #}와 {% comment %} 주석 차이'
-date: '2025-11-08 00:00:00 +0900'
+date: '2025-10-08 00:00:00 +0900'
 permalink: /posts/django-template/
 categories:
   - "\U0001D5EA\U0001D5F5\U0001D5EE\U0001D601 \U0001D5DC \U0001D5DF\U0001D5F2\U0001D5EE\U0001D5FF\U0001D5FB\U0001D5F2\U0001D5F1"
@@ -9,7 +9,7 @@ tags:
   - HTML
   - Troubleshooting
 notion_id: 3d90b704-6937-8095-86b6-ca8a3d5ea7bc
-notion_last_edited: '2026-09-12T12:04:00.000Z'
+notion_last_edited: '2026-09-12T12:06:00.000Z'
 notion_asset_dir: assets/img/posts/django-template
 notion_sync_version: 5
 ---
