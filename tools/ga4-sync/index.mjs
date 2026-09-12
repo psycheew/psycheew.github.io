@@ -2,8 +2,34 @@ import { readFile, mkdir, writeFile, rename } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { JWT } from 'google-auth-library';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 const outputPath = 'assets/data/analytics.json';
+const networkErrorCodes = new Set([
+  'ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ETIMEDOUT', 'EAI_AGAIN',
+  'ENOTFOUND', 'ENETUNREACH', 'EHOSTUNREACH', 'EPIPE',
+  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT',
+  'UND_ERR_SOCKET'
+]);
+
+export async function sendWithRetry(send, request, wait = sleep) {
+  // Three attempts total; prevent the HTTP library from adding its own retries.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await send({ ...request, retry: false });
+    } catch (error) {
+      const status = error?.response?.status;
+      const hasStatus = Number.isInteger(status) && status >= 100 && status <= 599;
+      // Only emit known codes, never arbitrary strings supplied by a library.
+      const code = [error?.code, error?.cause?.code].find((value) => networkErrorCodes.has(value));
+      const detail = hasStatus ? ` HTTP ${status}` : code ? ` ${code}` : '';
+      console.log(`GA4 request failed (${attempt}/3)${detail}`);
+      const retryable = hasStatus ? status === 429 || status >= 500 : Boolean(code);
+      if (!retryable || attempt === 3) throw error;
+      await wait(1000 * 2 ** (attempt - 1));
+    }
+  }
+}
 
 export function seoulDate(now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -75,8 +101,8 @@ export async function sync({ env = process.env, query, path = outputPath, now = 
     });
     const send = query ?? ((options) => client.request(options));
     const [total, daily] = await Promise.all([
-      send(request),
-      send({ ...request, data: { ...request.data,
+      sendWithRetry(send, request),
+      sendWithRetry(send, { ...request, data: { ...request.data,
         dateRanges: [{ startDate: today, endDate: today }] } })
     ]);
     // GA4 date ranges use the property's reporting time zone, not the runner's.
@@ -91,7 +117,7 @@ export async function sync({ env = process.env, query, path = outputPath, now = 
   } catch {
     // Never print errors from authentication/HTTP libraries: they may contain keys,
     // bearer tokens, request headers, or service-account details.
-    console.log('::warning::GA4 sync failed; existing analytics.json was preserved.');
+    console.log('::warning::GA4 sync failed after retries; existing analytics.json was preserved.');
     return false;
   }
 }
