@@ -5,6 +5,7 @@ import https from 'node:https';
 import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from 'notion-to-md';
 import matter from 'gray-matter';
+import { createBookmarkTransformer } from './bookmark.mjs';
 
 const TOKEN = process.env.NOTION_TOKEN;
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
@@ -21,6 +22,7 @@ const TEMP = path.join(ROOT, '.notion-sync-tmp');
 const MARKER = path.join(ROOT, '.notion-sync-changed');
 const notion = new Client({ auth: TOKEN });
 const n2m = new NotionToMarkdown({ notionClient: notion });
+n2m.setCustomTransformer('bookmark', createBookmarkTransformer());
 
 const textValue = (property, type) =>
   property?.[type]?.map((item) => item.plain_text).join('') || '';
@@ -294,7 +296,7 @@ async function prepare(page) {
       notion_id: page.id,
       notion_last_edited: page.last_edited_time,
       notion_asset_dir: publicAssets,
-      notion_sync_version: 4,
+      notion_sync_version: 5,
     };
     if (cover) frontmatter.image = cover;
     const filename = `${formattedDate(dateOf(page)).slice(0, 10)}-${slug}.md`;
@@ -387,7 +389,7 @@ async function main() {
       const previous = posts.find((post) => post.data.notion_id === page.id);
       const previousAssets = previous ? assetDirectory(previous) : null;
       if (
-        previous?.data.notion_sync_version === 4
+        previous?.data.notion_sync_version === 5
         && previous.data.notion_last_edited === page.last_edited_time
         && previousAssets
         && fs.existsSync(previousAssets)
