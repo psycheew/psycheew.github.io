@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseTotalUsers, saveCount, sync, seoulDate, sendWithRetry } from './index.mjs';
+import { parseSessions, saveCount, sync, seoulDate, sendWithRetry } from './index.mjs';
 import { loadAnalyticsCounter } from '../../_javascript/modules/components/analytics-counter.js';
 
 const report = (value) => ({
   metadata: { timeZone: 'Asia/Seoul' },
-  metricHeaders: [{ name: 'totalUsers' }],
+  metricHeaders: [{ name: 'sessions' }],
   rows: [{ metricValues: [{ value }] }]
 });
 const env = {
@@ -22,24 +22,26 @@ const env = {
 test('Korean midnight boundaries and valid/invalid reports', () => {
   assert.equal(seoulDate(new Date('2026-09-07T14:59:59Z')), '2026-09-07');
   assert.equal(seoulDate(new Date('2026-09-07T15:00:00Z')), '2026-09-08');
-  assert.equal(parseTotalUsers(report('1234')), 1234);
-  assert.equal(parseTotalUsers(report('0')), 0);
-  assert.equal(parseTotalUsers({ metricHeaders: [{ name: 'totalUsers' }] }), 0);
+  assert.equal(parseSessions(report('1234')), 1234);
+  assert.equal(parseSessions(report('0')), 0);
+  assert.equal(parseSessions({ metricHeaders: [{ name: 'sessions' }] }), 0);
   for (const value of ['-1', '1.5', '', 'NaN', '9007199254740992']) {
-    assert.throws(() => parseTotalUsers(report(value)));
+    assert.throws(() => parseSessions(report(value)));
   }
-  assert.throws(() => parseTotalUsers({}));
+  assert.throws(() => parseSessions({}));
+  assert.throws(() => parseSessions({ ...report('1234'), metricHeaders: [{ name: 'totalUsers' }] }));
 });
 
 test('sync publishes only public fields and preserves bytes when unchanged or failing', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'ga4-test-'));
   const path = join(dir, 'analytics.json');
   try {
-    await writeFile(path, '{"totalUsers":null,"updatedAt":null}\n');
+    // A successful sync replaces the legacy schema even when counts match.
+    await writeFile(path, '{"totalUsers":1234,"todayUsers":12,"updatedAt":"original"}\n');
     const now = new Date('2026-09-07T15:00:00Z');
     const ranges = [];
     assert.equal(await sync({ env, path, now, query: async (request) => {
-      assert.deepEqual(request.data.metrics, [{ name: 'totalUsers' }]);
+      assert.deepEqual(request.data.metrics, [{ name: 'sessions' }]);
       assert.equal(request.data.dimensions, undefined);
       ranges.push(request.data.dateRanges[0]);
       assert.equal(request.data.dateRanges[0].endDate, '2026-09-08');
@@ -50,9 +52,9 @@ test('sync publishes only public fields and preserves bytes when unchanged or fa
       { startDate: '2015-08-14', endDate: '2026-09-08' },
       { startDate: '2026-09-08', endDate: '2026-09-08' }
     ]);
-    assert.deepEqual(Object.keys(JSON.parse(saved)), ['totalUsers', 'todayUsers', 'updatedAt']);
-    assert.equal(JSON.parse(saved).todayUsers, 12);
-    assert.equal(JSON.parse(saved).totalUsers, 1234);
+    assert.deepEqual(Object.keys(JSON.parse(saved)), ['totalSessions', 'todaySessions', 'updatedAt']);
+    assert.equal(JSON.parse(saved).todaySessions, 12);
+    assert.equal(JSON.parse(saved).totalSessions, 1234);
     assert.equal(await saveCount(1234, 12, path, new Date('2030-01-01')), false);
     assert.equal(await readFile(path, 'utf8'), saved);
     for (const query of [
@@ -71,9 +73,9 @@ test('sync publishes only public fields and preserves bytes when unchanged or fa
       query: async () => { assert.fail('Must not authenticate outside Actions'); } }), false);
     assert.equal(await readFile(path, 'utf8'), saved);
     assert.equal(await saveCount(1234, 0, path), true);
-    assert.equal(JSON.parse(await readFile(path, 'utf8')).todayUsers, 0);
+    assert.equal(JSON.parse(await readFile(path, 'utf8')).todaySessions, 0);
     assert.equal(await saveCount(0, 0, path), true);
-    assert.equal(JSON.parse(await readFile(path, 'utf8')).totalUsers, 0);
+    assert.equal(JSON.parse(await readFile(path, 'utf8')).totalSessions, 0);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -124,7 +126,7 @@ test('each query retries independently, recovery publishes and exhaustion preser
   const dir = await mkdtemp(join(tmpdir(), 'ga4-retry-test-'));
   const path = join(dir, 'analytics.json');
   try {
-    await writeFile(path, '{"totalUsers":1,"todayUsers":1,"updatedAt":"original"}\n');
+    await writeFile(path, '{"totalSessions":1,"todaySessions":1,"updatedAt":"original"}\n');
     for (const recover of [true, false]) {
       const before = await readFile(path, 'utf8');
       const calls = { total: 0, daily: 0 };
@@ -140,8 +142,8 @@ test('each query retries independently, recovery publishes and exhaustion preser
       assert.deepEqual(calls, { total: 1, daily: 3 });
       const after = await readFile(path, 'utf8');
       if (recover) {
-        assert.equal(JSON.parse(after).totalUsers, 2000);
-        assert.equal(JSON.parse(after).todayUsers, 20);
+        assert.equal(JSON.parse(after).totalSessions, 2000);
+        assert.equal(JSON.parse(after).todaySessions, 20);
       } else {
         assert.equal(after, before);
       }
@@ -158,7 +160,7 @@ test('each query retries independently, recovery publishes and exhaustion preser
   }
 });
 
-test('UI handles valid counts, zero, initial null, malformed JSON and network failures', async () => {
+test('UI reads session counts and handles zero, initial null, malformed JSON and network failures', async () => {
   const originalDocument = globalThis.document;
   const originalFetch = globalThis.fetch;
   const counter = { dataset: { analyticsUrl: '/blog/assets/data/analytics.json' }, textContent: '—' };
@@ -168,13 +170,13 @@ test('UI handles valid counts, zero, initial null, malformed JSON and network fa
     globalThis.fetch = async (url, options) => {
       assert.equal(url, counter.dataset.analyticsUrl);
       assert.equal(options.cache, 'no-store');
-      return { ok: true, json: async () => ({ totalUsers: 1234, todayUsers: 12 }) };
+      return { ok: true, json: async () => ({ totalSessions: 1234, todaySessions: 12 }) };
     };
     await loadAnalyticsCounter();
     assert.equal(todayCounter.textContent, '12');
     assert.equal(counter.textContent, new Intl.NumberFormat().format(1234));
-    for (const totalUsers of [null, -1, '1234', 1.5]) {
-      globalThis.fetch = async () => ({ ok: true, json: async () => ({ totalUsers, todayUsers: totalUsers }) });
+    for (const totalSessions of [null, -1, '1234', 1.5]) {
+      globalThis.fetch = async () => ({ ok: true, json: async () => ({ totalSessions, todaySessions: totalSessions }) });
       await loadAnalyticsCounter();
       assert.equal(counter.textContent, new Intl.NumberFormat().format(1234));
       assert.equal(todayCounter.textContent, '12');
@@ -188,7 +190,7 @@ test('UI handles valid counts, zero, initial null, malformed JSON and network fa
       await loadAnalyticsCounter();
       assert.equal(counter.textContent, new Intl.NumberFormat().format(1234));
     }
-    globalThis.fetch = async () => ({ ok: true, json: async () => ({ totalUsers: 0, todayUsers: 0 }) });
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ totalSessions: 0, todaySessions: 0 }) });
     await loadAnalyticsCounter();
     assert.equal(counter.textContent, '0');
     assert.equal(todayCounter.textContent, '0');

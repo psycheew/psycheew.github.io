@@ -37,8 +37,8 @@ export function seoulDate(now = new Date()) {
   }).format(now);
 }
 
-export function parseTotalUsers(report) {
-  if (report.metricHeaders?.[0]?.name !== 'totalUsers') {
+export function parseSessions(report) {
+  if (report.metricHeaders?.[0]?.name !== 'sessions') {
     throw new Error('Unexpected metric');
   }
   if ((!report.rows || report.rows.length === 0) && !report.rowCount) {
@@ -54,8 +54,8 @@ export function parseTotalUsers(report) {
   return count;
 }
 
-export async function saveCount(totalUsers, todayUsers, path = outputPath, now = new Date()) {
-  if (![totalUsers, todayUsers].every((value) => Number.isSafeInteger(value) && value >= 0)) {
+export async function saveCount(totalSessions, todaySessions, path = outputPath, now = new Date()) {
+  if (![totalSessions, todaySessions].every((value) => Number.isSafeInteger(value) && value >= 0)) {
     throw new Error('Invalid count');
   }
   let previous;
@@ -65,8 +65,8 @@ export async function saveCount(totalUsers, todayUsers, path = outputPath, now =
     if (error.code !== 'ENOENT') throw error;
   }
   // Preserve updatedAt too when the metric is unchanged, avoiding hourly commits.
-  if (previous?.totalUsers === totalUsers && previous?.todayUsers === todayUsers) return false;
-  const data = { totalUsers, todayUsers, updatedAt: now.toISOString() };
+  if (previous?.totalSessions === totalSessions && previous?.todaySessions === todaySessions) return false;
+  const data = { totalSessions, todaySessions, updatedAt: now.toISOString() };
   await mkdir(dirname(path), { recursive: true });
   await writeFile(`${path}.tmp`, `${JSON.stringify(data, null, 2)}\n`);
   await rename(`${path}.tmp`, path);
@@ -88,9 +88,9 @@ export async function sync({ env = process.env, query, path = outputPath, now = 
       method: 'POST',
       url: `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
       data: {
-        // Covers the property's entire GA4 history; do not sum daily users.
+        // Covers the property's entire GA4 session history.
         dateRanges: [{ startDate: '2015-08-14', endDate: today }],
-        metrics: [{ name: 'totalUsers' }]
+        metrics: [{ name: 'sessions' }]
       },
       timeout: 30000
     };
@@ -106,12 +106,12 @@ export async function sync({ env = process.env, query, path = outputPath, now = 
         dateRanges: [{ startDate: today, endDate: today }] } })
     ]);
     // GA4 date ranges use the property's reporting time zone, not the runner's.
-    // Fail closed rather than publish another time zone's daily users as KST.
+    // Fail closed rather than publish another time zone's daily sessions as KST.
     if ([total, daily].some(({ data }) => data.metadata?.timeZone !== 'Asia/Seoul')) {
       console.log('::warning::Set the GA4 property reporting time zone to Asia/Seoul.');
       throw new Error('Unexpected reporting time zone');
     }
-    const changed = await saveCount(parseTotalUsers(total.data), parseTotalUsers(daily.data), path, now);
+    const changed = await saveCount(parseSessions(total.data), parseSessions(daily.data), path, now);
     console.log(changed ? 'GA4 public count updated.' : 'GA4 public count unchanged.');
     return true;
   } catch {

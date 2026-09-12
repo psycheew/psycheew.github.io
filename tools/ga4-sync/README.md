@@ -1,17 +1,17 @@
-# GA4 public visitor count
+# GA4 public session count
 
 - `.github/workflows/ga4-sync.yml` runs on `master` every hour at minute 17
   (UTC cron; GitHub may delay scheduled runs). It also supports manual execution.
 - The fetch step reads `GA4_PROPERTY_ID` and `GA4_SERVICE_ACCOUNT_JSON` from
   repository secrets. Google Auth Library handles service-account OAuth in memory;
   credentials are never written to disk or sent to the browser.
-- `runReport` requests `totalUsers` from `2015-08-14` through the current Seoul date, without
-  dimensions. This covers the property's available GA4 history and avoids summing
-  duplicate users across days. A second request queries that single date for TODAY.
+- `runReport` requests `sessions` from `2015-08-14` through the current Seoul date, without
+  dimensions. This covers the property's available GA4 session history.
+  A second request queries `sessions` for that single date for TODAY.
   The date is calculated once using `Asia/Seoul`. The GA4 property's reporting
   time zone must also be `Asia/Seoul`; response metadata is checked, and a mismatch
   preserves the existing JSON with a warning. Both requests must succeed before writing.
-- Only `totalUsers`, `todayUsers`, and `updatedAt` are published in `assets/data/analytics.json`.
+- Only `totalSessions`, `todaySessions`, and `updatedAt` are published in `assets/data/analytics.json`.
   `updatedAt` is UTC ISO 8601 and records the last count change, not the last poll.
   GA4 processing delays apply; this is not a realtime counter.
 - When both counts are unchanged, the file is not updated. API/authentication/validation failures
