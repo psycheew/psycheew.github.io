@@ -6,6 +6,7 @@ import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from 'notion-to-md';
 import matter from 'gray-matter';
 import { createBookmarkTransformer } from './bookmark.mjs';
+import { serializePost, SYNC_VERSION } from './post.mjs';
 
 const TOKEN = process.env.NOTION_TOKEN;
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
@@ -296,12 +297,11 @@ async function prepare(page) {
       notion_id: page.id,
       notion_last_edited: page.last_edited_time,
       notion_asset_dir: publicAssets,
-      notion_sync_version: 5,
     };
     if (cover) frontmatter.image = cover;
     const filename = `${formattedDate(dateOf(page)).slice(0, 10)}-${slug}.md`;
     const temporaryMarkdown = path.join(temporaryDirectory, filename);
-    fs.writeFileSync(temporaryMarkdown, matter.stringify(body, frontmatter), 'utf8');
+    fs.writeFileSync(temporaryMarkdown, serializePost(body, frontmatter), 'utf8');
     return {
       temporaryDirectory,
       temporaryAssets,
@@ -389,7 +389,8 @@ async function main() {
       const previous = posts.find((post) => post.data.notion_id === page.id);
       const previousAssets = previous ? assetDirectory(previous) : null;
       if (
-        previous?.data.notion_sync_version === 5
+        previous?.data.notion_sync_version === SYNC_VERSION
+        && previous.data.render_with_liquid === false
         && previous.data.notion_last_edited === page.last_edited_time
         && previousAssets
         && fs.existsSync(previousAssets)
