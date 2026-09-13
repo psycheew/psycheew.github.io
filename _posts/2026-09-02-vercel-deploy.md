@@ -12,7 +12,8 @@ tags:
 notion_id: 3cf0b704-6937-802c-94f2-ddb645333ff1
 notion_last_edited: '2026-09-12T11:54:00.000Z'
 notion_asset_dir: assets/img/posts/vercel-deploy
-notion_sync_version: 5
+render_with_liquid: false
+notion_sync_version: 6
 ---
 
 ## 🌱 Context

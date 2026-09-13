@@ -13,7 +13,8 @@ tags:
 notion_id: 3cf0b704-6937-80e5-964a-ceeceef21816
 notion_last_edited: '2026-09-12T12:00:00.000Z'
 notion_asset_dir: assets/img/posts/radix-select-error
-notion_sync_version: 5
+render_with_liquid: false
+notion_sync_version: 6
 ---
 
 ## 🌱 Context

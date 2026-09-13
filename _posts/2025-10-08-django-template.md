@@ -11,8 +11,8 @@ tags:
 notion_id: 3d90b704-6937-8095-86b6-ca8a3d5ea7bc
 notion_last_edited: '2026-09-12T12:06:00.000Z'
 notion_asset_dir: assets/img/posts/django-template
-notion_sync_version: 6
 render_with_liquid: false
+notion_sync_version: 6
 ---
 
 <br>

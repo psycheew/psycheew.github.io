@@ -11,7 +11,8 @@ tags:
 notion_id: 3d90b704-6937-803d-8afc-ed3289d6b49f
 notion_last_edited: '2026-09-12T12:21:00.000Z'
 notion_asset_dir: assets/img/posts/git-change-author
-notion_sync_version: 5
+render_with_liquid: false
+notion_sync_version: 6
 ---
 
 PR을 준비하던 중 commit 작성자 정보(`user.name`, `user.email`)가 제대로 설정되지 않아 기본값인 `user`로 기록된 것을 발견했습니다.

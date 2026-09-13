@@ -11,7 +11,8 @@ tags:
 notion_id: 3d90b704-6937-8015-b540-ddbd7a7d8452
 notion_last_edited: '2026-09-12T12:16:00.000Z'
 notion_asset_dir: assets/img/posts/git-branch-change
-notion_sync_version: 5
+render_with_liquid: false
+notion_sync_version: 6
 ---
 
 <br>

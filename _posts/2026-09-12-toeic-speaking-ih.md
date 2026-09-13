@@ -9,7 +9,8 @@ tags:
 notion_id: 3d70b704-6937-8049-84c9-e3ca7cf4179b
 notion_last_edited: '2026-09-12T11:30:00.000Z'
 notion_asset_dir: assets/img/posts/toeic-speaking-ih
-notion_sync_version: 5
+render_with_liquid: false
+notion_sync_version: 6
 ---
 
 <br>
