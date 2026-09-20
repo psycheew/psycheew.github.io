@@ -237,6 +237,15 @@ $sidebar-display: 'sidebar-display'; /* the attribute for sidebar display */
       @extend %sidebar-link-hover;
       @extend %clickable-transition;
 
+      &[aria-label='github'],
+      &[aria-label='email'] {
+        color: #4aa3d2;
+
+        &:hover {
+          color: #2785b6;
+        }
+      }
+
       &:not(:last-child) {
         margin-right: v.$sb-btn-gap;
 
