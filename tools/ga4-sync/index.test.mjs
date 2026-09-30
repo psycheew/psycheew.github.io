@@ -153,8 +153,73 @@ test('each query retries independently, recovery publishes and exhaustion preser
       'GA4 public count updated.',
       'GA4 request failed (1/3) HTTP 503', 'GA4 request failed (2/3) HTTP 503',
       'GA4 request failed (3/3) HTTP 503',
-      '::warning::GA4 sync failed after retries; existing analytics.json was preserved.'
+      '::warning::GA4 sync failed during GA4 requests (including authentication); existing analytics.json was preserved.'
     ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('failure diagnostics identify the stage without exposing secrets', async (t) => {
+  const logs = [];
+  t.mock.method(console, 'log', (line) => logs.push(line));
+  const dir = await mkdtemp(join(tmpdir(), 'ga4-diagnostics-'));
+  const path = join(dir, 'analytics.json');
+  const original = 'SECRET invalid existing JSON';
+  try {
+    await writeFile(path, original);
+    const cases = [
+      [{ env: { ...env, GITHUB_ACTIONS: 'false' } }, 'Actions environment validation'],
+      [{ env: { ...env, GA4_PROPERTY_ID: 'SECRET' } }, 'GA4_PROPERTY_ID validation'],
+      [{ env: { ...env, GA4_SERVICE_ACCOUNT_JSON: 'SECRET' } }, 'GA4_SERVICE_ACCOUNT_JSON validation'],
+      [{ env: { ...env, GA4_SERVICE_ACCOUNT_JSON: 'null' } }, 'GA4_SERVICE_ACCOUNT_JSON validation'],
+      [{ query: async () => { throw new Error('SECRET'); } }, 'GA4 requests (including authentication)'],
+      [{ query: async () => ({ data: {} }) }, 'reporting time zone validation'],
+      [{ query: async () => ({ data: report('SECRET') }) }, 'session report validation'],
+      [{}, 'analytics.json save']
+    ];
+    for (const [options, stage] of cases) {
+      logs.length = 0;
+      assert.equal(await sync({ env, path, query: async () => ({ data: report('1') }), ...options }), false);
+      assert.equal(logs.at(-1), `::warning::GA4 sync failed during ${stage}; existing analytics.json was preserved.`);
+      assert.ok(logs.every((line) => !line.includes('SECRET')));
+      assert.equal(await readFile(path, 'utf8'), original);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('GA4 omits metric headers as well as rows for an empty date range', () => {
+  const empty = { kind: 'analyticsData#runReport', metadata: { timeZone: 'Asia/Seoul' } };
+  assert.equal(parseSessions(empty), 0);
+  assert.equal(parseSessions({ ...empty, rows: [], rowCount: 0, metricHeaders: [] }), 0);
+  for (const invalid of [
+    {}, null, { kind: 'unexpected' },
+    { ...empty, rowCount: 1 },
+    { ...empty, rows: {} },
+    { ...empty, rowCount: '0' },
+    { ...empty, metricHeaders: [{ name: 'totalUsers' }] },
+    { ...empty, rows: [{ metricValues: [{ value: '1' }] }] }
+  ]) assert.throws(() => parseSessions(invalid));
+});
+
+test('empty daily report resets yesterday count to zero and unchanged sync succeeds', async (t) => {
+  const logs = [];
+  t.mock.method(console, 'log', (line) => logs.push(line));
+  const dir = await mkdtemp(join(tmpdir(), 'ga4-empty-test-'));
+  const path = join(dir, 'analytics.json');
+  try {
+    await writeFile(path, '{"totalSessions":89,"todaySessions":2,"updatedAt":"original"}\n');
+    const options = { env, path, now: new Date('2026-09-29T15:55:27Z'),
+      query: async (request) => ({ data: request.data.dateRanges[0].startDate === '2015-08-14'
+        ? report('89') : { kind: 'analyticsData#runReport', metadata: { timeZone: 'Asia/Seoul' } } }) };
+    assert.equal(await sync(options), true);
+    const saved = await readFile(path, 'utf8');
+    assert.deepEqual(JSON.parse(saved), { totalSessions: 89, todaySessions: 0, updatedAt: options.now.toISOString() });
+    assert.equal(await sync(options), true);
+    assert.equal(await readFile(path, 'utf8'), saved);
+    assert.equal(logs.at(-1), 'GA4 public count unchanged.');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
