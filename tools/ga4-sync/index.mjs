@@ -38,10 +38,20 @@ export function seoulDate(now = new Date()) {
 }
 
 export function parseSessions(report) {
+  // GA4 can omit both rows and metricHeaders when the date range has no data.
+  // Require a recognizable report rather than treating arbitrary objects as zero.
+  const emptyRows = report?.rows === undefined ||
+    (Array.isArray(report.rows) && report.rows.length === 0);
+  const emptyCount = report?.rowCount === undefined || report.rowCount === 0;
+  const emptyHeaders = report?.metricHeaders === undefined ||
+    (Array.isArray(report.metricHeaders) && report.metricHeaders.length === 0);
+  if (report?.kind === 'analyticsData#runReport' && emptyRows && emptyCount && emptyHeaders) {
+    return 0;
+  }
   if (report.metricHeaders?.[0]?.name !== 'sessions') {
     throw new Error('Unexpected metric');
   }
-  if ((!report.rows || report.rows.length === 0) && !report.rowCount) {
+  if (emptyRows && emptyCount) {
     return 0;
   }
   if (report.rows?.length !== 1) throw new Error('Unexpected rows');
@@ -74,12 +84,15 @@ export async function saveCount(totalSessions, todaySessions, path = outputPath,
 }
 
 export async function sync({ env = process.env, query, path = outputPath, now = new Date() } = {}) {
+  let stage = 'Actions environment validation';
   try {
     if (env.GITHUB_ACTIONS !== 'true') throw new Error('Actions only');
+    stage = 'GA4_PROPERTY_ID validation';
     const propertyId = env.GA4_PROPERTY_ID;
     if (!/^\d+$/.test(propertyId ?? '')) throw new Error('Invalid property');
+    stage = 'GA4_SERVICE_ACCOUNT_JSON validation';
     const credentials = JSON.parse(env.GA4_SERVICE_ACCOUNT_JSON);
-    if (credentials.type !== 'service_account' ||
+    if (credentials?.type !== 'service_account' ||
         !credentials.client_email || !credentials.private_key) {
       throw new Error('Invalid credentials');
     }
@@ -94,12 +107,14 @@ export async function sync({ env = process.env, query, path = outputPath, now = 
       },
       timeout: 30000
     };
+    stage = 'authentication client setup';
     const client = query ? null : new JWT({
       email: credentials.client_email,
       key: credentials.private_key,
       scopes: ['https://www.googleapis.com/auth/analytics.readonly']
     });
     const send = query ?? ((options) => client.request(options));
+    stage = 'GA4 requests (including authentication)';
     const [total, daily] = await Promise.all([
       sendWithRetry(send, request),
       sendWithRetry(send, { ...request, data: { ...request.data,
@@ -107,17 +122,22 @@ export async function sync({ env = process.env, query, path = outputPath, now = 
     ]);
     // GA4 date ranges use the property's reporting time zone, not the runner's.
     // Fail closed rather than publish another time zone's daily sessions as KST.
-    if ([total, daily].some(({ data }) => data.metadata?.timeZone !== 'Asia/Seoul')) {
+    stage = 'reporting time zone validation';
+    if ([total, daily].some(({ data }) => data?.metadata?.timeZone !== 'Asia/Seoul')) {
       console.log('::warning::Set the GA4 property reporting time zone to Asia/Seoul.');
       throw new Error('Unexpected reporting time zone');
     }
-    const changed = await saveCount(parseSessions(total.data), parseSessions(daily.data), path, now);
+    stage = 'session report validation';
+    const totalSessions = parseSessions(total.data);
+    const todaySessions = parseSessions(daily.data);
+    stage = 'analytics.json save';
+    const changed = await saveCount(totalSessions, todaySessions, path, now);
     console.log(changed ? 'GA4 public count updated.' : 'GA4 public count unchanged.');
     return true;
   } catch {
     // Never print errors from authentication/HTTP libraries: they may contain keys,
     // bearer tokens, request headers, or service-account details.
-    console.log('::warning::GA4 sync failed after retries; existing analytics.json was preserved.');
+    console.log(`::warning::GA4 sync failed during ${stage}; existing analytics.json was preserved.`);
     return false;
   }
 }

@@ -15,8 +15,11 @@
   `updatedAt` is UTC ISO 8601 and records the last count change, not the last poll.
   GA4 processing delays apply; this is not a realtime counter.
 - When both counts are unchanged, the file is not updated. API/authentication/validation failures
-  fail the fetch step with a generic warning and preserve the existing file.
+  fail the fetch step with a warning identifying the failed stage and preserve the existing file.
   Commit and deploy steps are skipped on failure.
+- Empty GA4 reports can omit both `rows` and `metricHeaders`. A recognized empty
+  `analyticsData#runReport` response is counted as zero, including immediately after
+  Seoul midnight before the day's sessions are available. Time zone validation still applies.
 - Changed counts are committed alone, rebased on `master`, and pushed without
   force. The workflow explicitly dispatches the existing `pages-deploy.yml`, as
   pushes using `GITHUB_TOKEN` do not trigger push workflows.
